@@ -10,6 +10,8 @@
 #include "parse.hpp"
 #include "path.hpp"
 
+#define SECTOR 2048
+
 namespace spirit = boost::spirit;
 namespace qi = spirit::qi;
 
@@ -27,8 +29,8 @@ void parseFile(MemoryIterator iterator, Path outputPath, unsigned long fileIndex
   parse(iterator, qi::little_word);
   parse(iterator, qi::little_dword, beginSector);
 
-  unsigned long offset = beginSector * 2048;
-  unsigned long size = (endSector - beginSector) * 2048;
+  unsigned long offset = beginSector * SECTOR;
+  unsigned long size = (endSector - beginSector) * SECTOR;
 
   MemoryIterator dataIterator(iterator);
   dataIterator.crop(offset, size);
@@ -55,8 +57,8 @@ void parseFragment(MemoryIterator iterator, Path outputPath, unsigned long fragm
 
   boost::uint32_t beginSector = baseSector + fragmentSector;
 
-  unsigned long offset = beginSector * 2048;
-  unsigned long size = (endSector - beginSector) * 2048;
+  unsigned long offset = beginSector * SECTOR;
+  unsigned long size = (endSector - beginSector) * SECTOR;
 
   MemoryIterator dataIterator(iterator);
   dataIterator.crop(offset, size);
@@ -92,7 +94,7 @@ void parseSubDirectory(MemoryIterator iterator, Path outputPath, unsigned long d
   pathBuilder << std::setfill('0') << std::setw(2) << directoryIndex;
   outputPath.push(pathBuilder.str());
 
-  iterator.seek(MemoryIterator::SeekSet, entriesListSector * 2048);
+  iterator.seek(MemoryIterator::SeekSet, entriesListSector * SECTOR);
 
   for (unsigned long entryIndex = entriesCount; entryIndex --; ) {
 
@@ -109,7 +111,7 @@ void parseSubDirectory(MemoryIterator iterator, Path outputPath, unsigned long d
   }
 
   if (type == 0x04) {
-	endSector = (iterator.end() - iterator.begin()) / 2048;
+	endSector = (iterator.end() - iterator.begin()) / SECTOR;
   } else {
 	endSector = baseSector;
   }
