@@ -7,7 +7,7 @@ CXX      = g++
 RM       = rm -f
 
 CXXFLAGS = -Wall -Wextra -Werror -I../common
-LFLAGS   = 
+LFLAGS   = -lboost_filesystem -lboost_system
 
 $(NAME): $(OBJS)
 	$(CXX) -o $(@) $(<) $(LFLAGS)

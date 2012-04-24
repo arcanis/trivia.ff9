@@ -1,6 +1,7 @@
 #pragma once
 
 class MemoryIterator {
+
 public:
   enum SeekSource {
 	SeekSet,
@@ -43,6 +44,15 @@ public:
 
   }
 
+  MemoryIterator & crop(unsigned long offset, unsigned long size) {
+
+	m_current = m_begin += offset;
+	m_end = m_begin + size;
+
+	return *this;
+
+  }
+
 public:
   char const * begin(void) const {
 	return m_begin;
@@ -65,4 +75,5 @@ private:
   char const * m_begin;
   char const * m_current;
   char const * m_end;
+
 };
