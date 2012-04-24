@@ -1,6 +1,6 @@
 NAME     = ../bin/unpack
 
-SRCS     = $(shell find . -name '*.cpp' -print)
+SRCS     = $(shell find . -name '*.cpp' -print) $(shell find ../common -name '*.cpp' -print)
 OBJS     = $(SRCS:.cpp=.o)
 
 CXX      = g++
@@ -10,7 +10,7 @@ CXXFLAGS = -Wall -Wextra -Werror -I../common
 LFLAGS   = -lboost_filesystem -lboost_system
 
 $(NAME): $(OBJS)
-	$(CXX) -o $(@) $(<) $(LFLAGS)
+	$(CXX) -o $(@) $(OBJS) $(LFLAGS)
 
 all: $(NAME)
 
