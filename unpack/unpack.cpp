@@ -5,8 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "memorydump.hpp"
-#include "memoryiterator.hpp"
+#include "memoryrange.hpp"
 #include "parse.hpp"
 #include "path.hpp"
 
@@ -20,25 +19,25 @@ namespace qi = spirit::qi;
 // 2 bytes : - unknown -
 // 4 bytes : first sector
 
-void parseFile(MemoryIterator iterator, Path outputPath, unsigned long fileIndex, unsigned long & endSector) {
+void parseFile(MemoryRange range, Path outputPath, unsigned long fileIndex, unsigned long & endSector) {
 
   boost::uint16_t id;
   boost::uint32_t beginSector;
 
-  parse(iterator, qi::little_word, id);
-  parse(iterator, qi::little_word);
-  parse(iterator, qi::little_dword, beginSector);
+  parse(range, qi::little_word, id);
+  parse(range, qi::little_word);
+  parse(range, qi::little_dword, beginSector);
 
   unsigned long offset = beginSector * SECTOR;
   unsigned long size = (endSector - beginSector) * SECTOR;
 
-  MemoryIterator dataIterator(iterator);
-  dataIterator.crop(offset, size);
+  MemoryRange dataRange(range);
+  dataRange.crop(offset, size);
 
   std::stringstream pathBuilder;
   pathBuilder << std::setfill('0') << std::setw(3) << fileIndex;
   outputPath.push(pathBuilder.str());
-  outputPath.dump(dataIterator);
+  outputPath.dump(dataRange);
 
   endSector = beginSector;
 
@@ -47,11 +46,11 @@ void parseFile(MemoryIterator iterator, Path outputPath, unsigned long fileIndex
 ////////////
 // 2 bytes : fragment sector, or 0xFFFF
 
-void parseFragment(MemoryIterator iterator, Path outputPath, unsigned long fragmentIndex, unsigned long baseSector, unsigned long & endSector) {
+void parseFragment(MemoryRange range, Path outputPath, unsigned long fragmentIndex, unsigned long baseSector, unsigned long & endSector) {
 
   boost::uint16_t fragmentSector;
 
-  parse(iterator, qi::little_word, fragmentSector);
+  parse(range, qi::little_word, fragmentSector);
 
   if (fragmentSector == 0xFFFF) return ;
 
@@ -60,13 +59,13 @@ void parseFragment(MemoryIterator iterator, Path outputPath, unsigned long fragm
   unsigned long offset = beginSector * SECTOR;
   unsigned long size = (endSector - beginSector) * SECTOR;
 
-  MemoryIterator dataIterator(iterator);
-  dataIterator.crop(offset, size);
+  MemoryRange dataRange(range);
+  dataRange.crop(offset, size);
 
   std::stringstream pathBuilder;
   pathBuilder << std::setfill('0') << std::setw(3) << fragmentIndex;
   outputPath.push(pathBuilder.str());
-  outputPath.dump(dataIterator);
+  outputPath.dump(dataRange);
 
   endSector = beginSector;
 
@@ -78,40 +77,40 @@ void parseFragment(MemoryIterator iterator, Path outputPath, unsigned long fragm
 // 4 bytes : entries list sector
 // 4 bytes : base sector
 
-void parseSubDirectory(MemoryIterator iterator, Path outputPath, unsigned long directoryIndex, unsigned long & endSector) {
+void parseSubDirectory(MemoryRange range, Path outputPath, unsigned long directoryIndex, unsigned long & endSector) {
 
   boost::uint32_t type;
   boost::uint32_t entriesCount;
   boost::uint32_t entriesListSector;
   boost::uint32_t baseSector;
 
-  parse(iterator, qi::little_dword, type);
-  parse(iterator, qi::little_dword, entriesCount);
-  parse(iterator, qi::little_dword, entriesListSector);
-  parse(iterator, qi::little_dword, baseSector);
+  parse(range, qi::little_dword, type);
+  parse(range, qi::little_dword, entriesCount);
+  parse(range, qi::little_dword, entriesListSector);
+  parse(range, qi::little_dword, baseSector);
 
   std::stringstream pathBuilder;
   pathBuilder << std::setfill('0') << std::setw(2) << directoryIndex;
   outputPath.push(pathBuilder.str());
 
-  iterator.seek(MemoryIterator::SeekSet, entriesListSector * SECTOR);
+  range.seek(MemoryRange::SeekSet, entriesListSector * SECTOR);
 
   for (unsigned long entryIndex = entriesCount; entryIndex --; ) {
 
-	MemoryIterator subIterator(iterator);
+	MemoryRange subRange(range);
 
 	if (type == 0x02) {
-	  subIterator.seek(MemoryIterator::SeekCur, 8 * entryIndex);
-	  parseFile(subIterator, outputPath, entryIndex, endSector);
+	  subRange.seek(MemoryRange::SeekCur, 8 * entryIndex);
+	  parseFile(subRange, outputPath, entryIndex, endSector);
 	} else if (type == 0x03) {
-	  subIterator.seek(MemoryIterator::SeekCur, 2 * entryIndex);
-	  parseFragment(subIterator, outputPath, entryIndex, baseSector, endSector);
+	  subRange.seek(MemoryRange::SeekCur, 2 * entryIndex);
+	  parseFragment(subRange, outputPath, entryIndex, baseSector, endSector);
 	}
 
   }
 
   if (type == 0x04) {
-	endSector = (iterator.end() - iterator.begin()) / SECTOR;
+	endSector = (range.end() - range.begin()) / SECTOR;
   } else {
 	endSector = baseSector;
   }
@@ -123,18 +122,18 @@ void parseSubDirectory(MemoryIterator iterator, Path outputPath, unsigned long d
 // 4 bytes : directories count
 // 4 bytes : - unknown -
 
-void parseRootDirectory(MemoryIterator iterator, Path outputPath) {
+void parseRootDirectory(MemoryRange range, Path outputPath) {
 
   boost::uint32_t magicNumber;
   boost::uint32_t directoriesCount;
 
-  parse(iterator, qi::big_dword, magicNumber);
+  parse(range, qi::big_dword, magicNumber);
   if (magicNumber != 0x46463920)
 	throw std::runtime_error("Bad magic number.");
 
-  parse(iterator, qi::little_dword);
-  parse(iterator, qi::little_dword, directoriesCount);
-  parse(iterator, qi::little_dword);
+  parse(range, qi::little_dword);
+  parse(range, qi::little_dword, directoriesCount);
+  parse(range, qi::little_dword);
 
   outputPath.push("ff9");
 
@@ -142,10 +141,10 @@ void parseRootDirectory(MemoryIterator iterator, Path outputPath) {
 
   for (unsigned long directoryIndex = directoriesCount; directoryIndex --; ) {
 
-	MemoryIterator subIterator(iterator);
-	subIterator.seek(MemoryIterator::SeekCur, 16 * directoryIndex);
+	MemoryRange subRange(range);
+	subRange.seek(MemoryRange::SeekCur, 16 * directoryIndex);
 
-	parseSubDirectory(subIterator, outputPath, directoryIndex, endSector);
+	parseSubDirectory(subRange, outputPath, directoryIndex, endSector);
 
   }
 
@@ -163,8 +162,8 @@ int main(int argc, char ** argv) {
 	archive.read(begin, size);
 	archive.close();
 
-	MemoryIterator iterator(begin, begin + size);
-	parseRootDirectory(iterator, Path(argv[2]));
+	MemoryRange range(begin, begin + size);
+	parseRootDirectory(range, Path(argv[2]));
 
 	delete[] begin;
 

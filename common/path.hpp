@@ -9,7 +9,7 @@
 #include <list>
 #include <string>
 
-#include "memoryiterator.hpp"
+#include "memoryrange.hpp"
 
 class Path {
 
@@ -27,7 +27,7 @@ public:
   }
 
 public:
-  Path const & dump(MemoryIterator const & iterator) {
+  Path const & dump(MemoryRange const & range) {
 	boost::filesystem::path pathname(str());
 
 	std::string dirname = pathname.parent_path().string();
@@ -36,7 +36,7 @@ public:
 	std::ofstream output;
 	output.exceptions(std::ios_base::failbit | std::ios_base::badbit);
 	output.open(pathname.string().c_str(), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc);
-	output.write(iterator.current(), iterator.end() - iterator.current());
+	output.write(range.current(), range.end() - range.current());
 	output.close();
 
 	return *this;
