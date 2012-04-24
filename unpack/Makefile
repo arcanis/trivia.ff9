@@ -1,4 +1,4 @@
-NAME     = unpack
+NAME     = ../bin/unpack
 
 SRCS     = $(shell find . -name '*.cpp' -print)
 OBJS     = $(SRCS:.cpp=.o)

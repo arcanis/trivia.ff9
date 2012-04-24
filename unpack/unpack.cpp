@@ -10,53 +10,98 @@
 namespace spirit = boost::spirit;
 namespace qi = spirit::qi;
 
+////////////
 // 2 bytes : file ID
 // 2 bytes : - unknown -
-// 4 bytes : first file sector
+// 4 bytes : first sector
 
-void parseFile(MemoryIterator iterator, unsigned long fileIndex, unsigned long & nextFileSectorOffset) {
+void parseFile(MemoryIterator iterator, unsigned long fileIndex, unsigned long & endSector) {
+
+  (void) fileIndex;
 
   boost::uint16_t id;
-  boost::uint32_t firstSector;
+  boost::uint32_t beginSector;
 
   parse(iterator, qi::little_word, id);
   parse(iterator, qi::little_word);
-  parse(iterator, qi::little_dword, firstSector);
+  parse(iterator, qi::little_dword, beginSector);
 
-  unsigned long size = nextFileSectorOffset - firstSector;
+  unsigned long offset = beginSector * 2048;
+  unsigned long size = (endSector - beginSector) * 2048;
 
-  nextFileSectorOffset = firstSector;
+  (void) offset;
+  (void) size;
+
+  endSector = beginSector;
 
 }
 
-// 4 bytes : directory type
-// 4 bytes : files count
-// 4 bytes : directory informations sector
-// 4 bytes : first file sector
+////////////
+// 2 bytes : fragment sector, or 0xFFFF
 
-void parseRegularDirectory(MemoryIterator iterator, unsigned long directoryIndex, unsigned long & nextFileSectorOffset) {
+void parseFragment(MemoryIterator iterator, unsigned long fragmentIndex, unsigned long baseSector, unsigned long & endSector) {
+
+  (void) fragmentIndex;
+
+  boost::uint16_t offsetSector;
+
+  parse(iterator, qi::little_word, offsetSector);
+
+  if (offsetSector == 0xFFFF)
+	return ;
+
+  boost::uint32_t beginSector = baseSector + offsetSector;
+
+  unsigned long offset = beginSector * 2048;
+  unsigned long size = (endSector - beginSector) * 2048;
+
+  (void) offset;
+  (void) size;
+
+  endSector = beginSector;
+
+}
+////////////
+// 4 bytes : directory type
+// 4 bytes : entries count
+// 4 bytes : entries list sector
+// 4 bytes : base sector
+
+void parseSubDirectory(MemoryIterator iterator, unsigned long directoryIndex, unsigned long & endSector) {
+
+  (void) directoryIndex;
 
   boost::uint32_t type;
-  boost::uint32_t filesCount;
-  boost::uint32_t directoryInformationsSector;
-  boost::uint32_t firstFileSector;
+  boost::uint32_t entriesCount;
+  boost::uint32_t entriesListSector;
+  boost::uint32_t baseSector;
 
   parse(iterator, qi::little_dword, type);
-  parse(iterator, qi::little_dword, filesCount);
-  parse(iterator, qi::little_dword, directoryInformationsSector);
-  parse(iterator, qi::little_dword, firstFileSector);
+  parse(iterator, qi::little_dword, entriesCount);
+  parse(iterator, qi::little_dword, entriesListSector);
+  parse(iterator, qi::little_dword, baseSector);
 
-  iterator.seek(MemoryIterator::SeekSet, directoryInformationsSector * 2048);
+  iterator.seek(MemoryIterator::SeekSet, entriesListSector * 2048);
 
-  for (unsigned long fileIndex = filesCount; fileIndex --; ) {
+  for (unsigned long entryIndex = entriesCount; entryIndex --; ) {
 
 	MemoryIterator subIterator(iterator);
-	subIterator.seek(MemoryIterator::SeekCur, 8 * fileIndex);
-	parseFile(subIterator, fileIndex, nextFileSectorOffset);
+
+	if (type == 0x02) {
+	  subIterator.seek(MemoryIterator::SeekCur, 8 * entryIndex);
+	  parseFile(subIterator, entryIndex, endSector);
+	} else if (type == 0x03) {
+	  subIterator.seek(MemoryIterator::SeekCur, 2 * entryIndex);
+	  parseFragment(subIterator, entryIndex, baseSector, endSector);
+	}
 
   }
 
-  nextFileSectorOffset = directoryInformationsSector;
+  if (type == 0x04) {
+	endSector = (iterator.end() - iterator.begin()) / 2048;
+  } else {
+	endSector = baseSector;
+  }
 
 }
 
@@ -84,7 +129,7 @@ void parseRootDirectory(MemoryIterator iterator) {
 
 	MemoryIterator subIterator(iterator);
 	subIterator.seek(MemoryIterator::SeekCur, 16 * directoryIndex);
-	parseRegularDirectory(subIterator, directoryIndex, nextFileSectorOffset);
+	parseSubDirectory(subIterator, directoryIndex, nextFileSectorOffset);
 
   }
 
