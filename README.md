@@ -34,6 +34,6 @@ If you find an issue in one of the utilities, or want to discuss about a wiki ar
 
 ## Credits
 
-The project is lead by [Maël Nison](http://www.arcastel.com).
+The project is led by [Maël Nison](http://www.arcastel.com).
 
 Multiple informations from this repository come from the [Qhimm](http://www.qhimm.com) community. Thanks !
