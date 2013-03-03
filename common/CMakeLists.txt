@@ -1,4 +1,4 @@
-add_library(ffix-common
+add_library(common
     memoryrange.cpp
     path.cpp
 )

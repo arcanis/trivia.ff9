@@ -1,5 +1,5 @@
 include_directories(
-    ../ffix-common
+    ../common
 )
 
 add_executable(ffix-extract-img
@@ -7,7 +7,7 @@ add_executable(ffix-extract-img
 )
 
 target_link_libraries(ffix-extract-img
-    ffix-common
+    common
     boost_filesystem
     boost_system
 )
