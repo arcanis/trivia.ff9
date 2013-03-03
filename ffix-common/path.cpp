@@ -11,8 +11,8 @@
 
 Path::Path( std::string const & orig )
 {
-    typedef boost::char_separator<char> separator;
-    typedef boost::tokenizer<separator> tokenizer;
+    typedef boost::char_separator< char > separator;
+    typedef boost::tokenizer< separator > tokenizer;
 
     separator sep( "/" );
     tokenizer tokens( orig, sep );
@@ -41,5 +41,22 @@ Path const & Path::dump( MemoryRange const & range ) const
 
 std::string Path::string( void ) const
 {
-    return boost::algorithm::join( this->m_partList, "/" );
+    std::string final;
+    bool isFirst = true;
+
+    std::list< std::string>::const_iterator it;
+    for ( it = m_partList.begin( ); it != m_partList.end( ); ++ it ) {
+
+        std::string const & part = * it;
+
+        if ( ! isFirst && part.length( ) > 0 && part[ 0 ] != '.' )
+            final += '/';
+
+        final += part;
+
+        isFirst = false;
+
+    }
+
+    return final;
 }

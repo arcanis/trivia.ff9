@@ -12,6 +12,8 @@ public:
 
     inline Path( void );
 
+    inline Path( Path const & path );
+
     Path( std::string const & orig );
 
 public:
@@ -29,11 +31,17 @@ public:
     Path const & dump( MemoryRange const & range ) const;
 
 private:
+
     std::list< std::string > m_partList;
 
 };
 
 Path::Path( void )
+{
+}
+
+Path::Path( Path const & path )
+    : m_partList( path.m_partList )
 {
 }
 

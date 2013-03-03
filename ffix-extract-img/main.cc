@@ -14,14 +14,33 @@
 namespace spirit = boost::spirit;
 namespace qi = spirit::qi;
 
+void suffixize( Path & outputPath, MemoryRange range )
+{
+    boost::uint32_t mime;
+    std::string suffix = ".raw";
+
+    try {
+
+        parse( range, qi::byte_, mime );
+
+        if ( mime == 0xDB )
+            suffix = ".ff9db";
+
+    } catch ( ... ) {
+
+    }
+
+    outputPath.push( suffix );
+}
+
 ////////////
 // 2 bytes : file ID
 // 2 bytes : - unknown -
 // 4 bytes : first sector
 
-void parseFile( MemoryRange range, Path outputPath, unsigned long fileIndex, unsigned long & endSector )
+void parseFile( MemoryRange range, Path outputPath, unsigned long & endSector )
 {
-    boost::uint16_t id;
+    boost::uint32_t id;
     boost::uint32_t beginSector;
 
     parse( range, qi::little_word, id );
@@ -34,9 +53,7 @@ void parseFile( MemoryRange range, Path outputPath, unsigned long fileIndex, uns
     MemoryRange dataRange( range );
     dataRange.crop( offset, size );
 
-    std::stringstream pathBuilder;
-    pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << fileIndex;
-    outputPath.push( pathBuilder.str( ) );
+    suffixize( outputPath, dataRange );
     outputPath.dump( dataRange );
 
     endSector = beginSector;
@@ -45,9 +62,9 @@ void parseFile( MemoryRange range, Path outputPath, unsigned long fileIndex, uns
 ////////////
 // 2 bytes : fragment sector, or 0xFFFF
 
-void parseFragment( MemoryRange range, Path outputPath, unsigned long fragmentIndex, unsigned long baseSector, unsigned long & endSector )
+void parseFragment( MemoryRange range, Path outputPath, unsigned long baseSector, unsigned long & endSector )
 {
-    boost::uint16_t fragmentSector;
+    boost::uint32_t fragmentSector;
 
     parse( range, qi::little_word, fragmentSector );
 
@@ -61,21 +78,19 @@ void parseFragment( MemoryRange range, Path outputPath, unsigned long fragmentIn
     MemoryRange dataRange( range );
     dataRange.crop( offset, size );
 
-    std::stringstream pathBuilder;
-    pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << fragmentIndex;
-    outputPath.push( pathBuilder.str( ) );
+    suffixize( outputPath, dataRange );
     outputPath.dump( dataRange );
 
     endSector = beginSector;
 }
 
 ////////////
-// 4 bytes : directory type
+// 4 bytes : directory type [0x02 = file, 0x03 = fragment]
 // 4 bytes : entries count
 // 4 bytes : entries list sector
 // 4 bytes : base sector
 
-void parseContainer( MemoryRange range, Path outputPath, unsigned long containerIndex, unsigned long & endSector )
+void parseContainer( MemoryRange range, Path outputPath, unsigned long & endSector )
 {
     boost::uint32_t type;
     boost::uint32_t entryCount;
@@ -90,26 +105,28 @@ void parseContainer( MemoryRange range, Path outputPath, unsigned long container
     std::cout << "  Container type : 0x" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << type << std::endl;
     std::cout << "  Entry count    : "   << std::dec << entryCount << std::endl;
 
-    std::stringstream pathBuilder;
-    pathBuilder << std::setfill( '0' ) << std::setw( 2 ) << containerIndex;
-    outputPath.push( pathBuilder.str( ) );
-
     range.seek( MemoryRange::SeekSet, entryListSector * SECTOR );
 
     for ( unsigned long entryIndex = entryCount; entryIndex --;  ) {
 
         MemoryRange subRange( range );
 
+        std::stringstream pathBuilder;
+        pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << entryIndex;
+
+        Path subOutputPath( outputPath );
+        subOutputPath.push( pathBuilder.str( ) );
+
         switch ( type ) {
 
             case 0x02:
                 subRange.seek( MemoryRange::SeekCur, 8 * entryIndex );
-                parseFile( subRange, outputPath, entryIndex, endSector );
+                parseFile( subRange, subOutputPath, endSector );
             break;
 
             case 0x03:
                 subRange.seek( MemoryRange::SeekCur, 2 * entryIndex );
-                parseFragment( subRange, outputPath, entryIndex, baseSector, endSector );
+                parseFragment( subRange, subOutputPath, baseSector, endSector );
             break;
 
         }
@@ -123,6 +140,7 @@ void parseContainer( MemoryRange range, Path outputPath, unsigned long container
     }
 }
 
+////////////
 // 4 bytes : magic 0x46463920
 // 4 bytes : - unknown -
 // 4 bytes : directories count
@@ -141,8 +159,6 @@ void parseImage( MemoryRange range, Path outputPath )
     parse( range, qi::little_dword, containerCount );
     parse( range, qi::little_dword );
 
-    outputPath.push( "ff9" );
-
     unsigned long endSector;
 
     std::cout << "Container count : " << containerCount << std::endl;
@@ -152,8 +168,14 @@ void parseImage( MemoryRange range, Path outputPath )
         MemoryRange subRange( range );
         subRange.seek( MemoryRange::SeekCur, 16 * containerIndex );
 
+        std::stringstream pathBuilder;
+        pathBuilder << std::setfill( '0' ) << std::setw( 2 ) << containerIndex;
+
+        Path subOutputPath( outputPath );
+        subOutputPath.push( pathBuilder.str( ) );
+
         std::cout << std::endl << "* Extracting #" << containerIndex << std::endl;
-        parseContainer( subRange, outputPath, containerIndex, endSector );
+        parseContainer( subRange, subOutputPath, endSector );
 
     }
 }
@@ -170,8 +192,11 @@ int main( int argc, char ** argv )
         archive.read( begin, size );
         archive.close( );
 
+        Path outputPath( argv[ 2 ] );
+        outputPath.push( "ff9" );
+
         MemoryRange range( begin, begin + size );
-        parseImage( range, Path( argv[ 2 ] ) );
+        parseImage( range, outputPath );
 
         delete[] begin;
 
@@ -179,7 +204,7 @@ int main( int argc, char ** argv )
 
     } else {
 
-        std::cerr << "Usage: " << argv[ 0 ] << " <path to FF9.IMG> <path to extract>" << std::endl;
+        std::cerr << "Usage: " << argv[ 0 ] << " \"<source path>\" \"<destination path>\"" << std::endl;
         return -1;
 
     }
