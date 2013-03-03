@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <sstream>
 #include <stdexcept>
 
 #include "memoryrange.hpp"
@@ -12,48 +13,90 @@ MemoryRange::MemoryRange( char const * begin, char const * end )
     this->m_end = end;
 }
 
-MemoryRange & MemoryRange::seek( SeekSource whence, long relativeOffset )
+unsigned long MemoryRange::seek( SeekSource whence, long offset )
 {
     char const * current;
 
     switch ( whence ) {
 
         case SeekSet:
-            current = this->m_begin + relativeOffset;
+            current = this->m_begin + offset;
         break;
 
         case SeekCur:
-            current = this->m_current + relativeOffset;
+            current = this->m_current + offset;
         break;
 
         case SeekEnd:
-            current = this->m_end - relativeOffset;
+            current = this->m_end - offset;
         break;
 
     }
 
-    if ( current < this->m_begin || current > this->m_end )
-        throw std::out_of_range( "Invalid seek" );
+    if ( current < this->m_begin || current > this->m_end ) {
+
+        std::ostringstream errorBuilder;
+
+        void const * ac = reinterpret_cast< void const * >( current );
+
+        void const * bb = reinterpret_cast< void const * >( this->m_begin )
+                 , * be = reinterpret_cast< void const * >( this->m_end );
+
+        errorBuilder << ac;
+        errorBuilder << " is not inside ";
+        errorBuilder << "(" << bb << "," << be << ")";
+
+        throw std::out_of_range( "Invalid seek (" + errorBuilder.str( ) + ")" );
+
+    }
 
     this->m_current = current;
 
-    return * this;
+    return this->m_current - this->m_begin;
 }
 
-MemoryRange & MemoryRange::crop( unsigned long absoluteOffset, unsigned long size )
+unsigned long MemoryRange::crop( SeekSource whence, unsigned long offset, unsigned long size )
 {
-    char const * begin = this->m_begin + absoluteOffset;
+    char const * begin, * end;
 
-    if ( begin > this->m_end )
-        throw std::out_of_range( "Invalid crop" );
+    switch ( whence ) {
 
-    char const * end = begin + size;
+        case SeekSet:
+            begin = this->m_begin + offset;
+        break;
 
-    if ( end > this->m_end )
-        throw std::out_of_range( "Invalid crop" );
+        case SeekCur:
+            begin = this->m_current + offset;
+        break;
+
+        case SeekEnd:
+            begin = this->m_end - offset;
+        break;
+
+    }
+
+    end = begin + size;
+
+    if ( begin < this->m_begin || begin > this->m_end || end < this->m_begin || end > this->m_end ) {
+
+        std::ostringstream errorBuilder;
+
+        void const * ab = reinterpret_cast< void const * >( begin )
+                 , * ae = reinterpret_cast< void const * >( end );
+
+        void const * bb = reinterpret_cast< void const * >( this->m_begin )
+                 , * be = reinterpret_cast< void const * >( this->m_end );
+
+        errorBuilder << "(" << ab << "," << ae << ")";
+        errorBuilder << " is not inside ";
+        errorBuilder << "(" << bb << "," << be << ")";
+
+        throw std::out_of_range( "Invalid crop (" + errorBuilder.str( ) + ")" );
+
+    }
 
     this->m_begin = this->m_current = begin;
     this->m_end = end;
 
-    return * this;
+    return this->m_end - this->m_begin;
 }

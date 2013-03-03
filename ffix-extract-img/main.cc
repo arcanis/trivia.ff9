@@ -51,7 +51,7 @@ void parseFile( MemoryRange range, Path outputPath, unsigned long & endSector )
     unsigned long size = ( endSector - beginSector ) * SECTOR;
 
     MemoryRange dataRange( range );
-    dataRange.crop( offset, size );
+    dataRange.crop( MemoryRange::SeekSet, offset, size );
 
     suffixize( outputPath, dataRange );
     outputPath.dump( dataRange );
@@ -76,7 +76,7 @@ void parseFragment( MemoryRange range, Path outputPath, unsigned long baseSector
     unsigned long size = ( endSector - beginSector ) * SECTOR;
 
     MemoryRange dataRange( range );
-    dataRange.crop( offset, size );
+    dataRange.crop( MemoryRange::SeekSet, offset, size );
 
     suffixize( outputPath, dataRange );
     outputPath.dump( dataRange );

@@ -12,8 +12,24 @@
 namespace spirit = boost::spirit;
 namespace qi = spirit::qi;
 
-////////////
-//
+void suffixize( Path & outputPath, MemoryRange range )
+{
+    boost::uint32_t mime;
+    std::string suffix = ".raw";
+
+    try {
+
+        parse( range, qi::byte_, mime );
+
+        if ( mime == 0xDB )
+            suffix = ".ff9db";
+
+    } catch ( ... ) {
+
+    }
+
+    outputPath.push( suffix );
+}
 
 ////////////
 // 1 byte  : data type
@@ -63,6 +79,19 @@ void parsePack( MemoryRange range, Path outputPath )
         std::cout << "    Identifier    : " << identifier << std::endl;
         std::cout << "    Pointer start : " << start << std::endl;
         std::cout << "    Size          : " << size << " byte(s)" << std::endl;
+
+        MemoryRange dataRange( range );
+        dataRange.seek( MemoryRange::SeekCur, identifierSize + objectIndex * 4 );
+        dataRange.crop( MemoryRange::SeekCur, start, size );
+
+        std::stringstream pathBuilder;
+        pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << objectIndex;
+
+        Path subOutputPath( outputPath );
+        subOutputPath.push( pathBuilder.str( ) );
+
+        suffixize( subOutputPath, dataRange );
+        subOutputPath.dump( dataRange );
 
         end = start;
 

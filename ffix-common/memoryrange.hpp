@@ -16,9 +16,13 @@ public:
 
 public:
 
-    MemoryRange & seek( SeekSource whence, long offset );
+    inline unsigned long size( void ) const;
 
-    MemoryRange & crop( unsigned long offset, unsigned long size );
+public:
+
+    unsigned long seek( SeekSource whence, long offset );
+
+    unsigned long crop( SeekSource whence, unsigned long offset, unsigned long size );
 
 public:
 
@@ -41,6 +45,11 @@ private:
     char const * m_end;
 
 };
+
+unsigned long MemoryRange::size( void ) const
+{
+    return this->m_end - this->m_begin;
+}
 
 char const * MemoryRange::begin( void ) const
 {
