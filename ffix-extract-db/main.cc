@@ -13,6 +13,9 @@ namespace spirit = boost::spirit;
 namespace qi = spirit::qi;
 
 ////////////
+//
+
+////////////
 // 1 byte  : data type
 // 1 byte  : object count
 // 2 bytes : padding (0x0000)
@@ -24,9 +27,46 @@ void parsePack( MemoryRange range, Path outputPath )
 
     parse( range, qi::byte_, dataType );
     parse( range, qi::byte_, objectCount );
+    parse( range, qi::word );
 
     std::cout << "  Data type    : 0x" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << dataType << std::endl;
     std::cout << "  Object count : "   << std::dec << objectCount << std::endl;
+
+    #define CEIL_FACTOR( N, F ) ( ( N ) % ( F ) == 0 ? ( N ) : ( N ) + ( F ) - ( ( N ) % ( F ) ) )
+    int identifierSize = CEIL_FACTOR( objectCount * 2, 4 );
+    int startSize = CEIL_FACTOR( objectCount * 4, 4 );
+
+    boost::uint32_t end;
+
+    MemoryRange endRange( range );
+    endRange.seek( MemoryRange::SeekCur, identifierSize + startSize );
+    parse( endRange, qi::little_dword, end );
+
+    for ( unsigned long objectIndex = objectCount; objectIndex --; ) {
+
+        boost::uint32_t identifier, start;
+
+        MemoryRange identifierRange( range );
+        identifierRange.seek( MemoryRange::SeekCur, 0 );
+        identifierRange.seek( MemoryRange::SeekCur, objectIndex * 2 );
+        parse( identifierRange, qi::little_word, identifier );
+
+        MemoryRange startRange( range );
+        startRange.seek( MemoryRange::SeekCur, identifierSize );
+        startRange.seek( MemoryRange::SeekCur, objectIndex * 4 );
+        parse( startRange, qi::little_dword, start );
+
+        unsigned long size = end - start;
+
+        std::cout << std::endl;
+        std::cout << "  * Unpacking #" << objectIndex << std::endl;
+        std::cout << "    Identifier    : " << identifier << std::endl;
+        std::cout << "    Pointer start : " << start << std::endl;
+        std::cout << "    Size          : " << size << " byte(s)" << std::endl;
+
+        end = start;
+
+    }
 }
 
 ////////////
@@ -68,7 +108,7 @@ void parseDB( MemoryRange range, Path outputPath )
         Path subOutputPath( outputPath );
         subOutputPath.push( pathBuilder.str( ) );
 
-        std::cout << "* Extracting #" << pointerIndex << std::endl;
+        std::cout << std::endl << "* Extracting #" << pointerIndex << std::endl;
         parsePack( subRange, outputPath );
 
     }
