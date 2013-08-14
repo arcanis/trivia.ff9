@@ -14,8 +14,8 @@ You will have to use your own FF9.IMG file, we won't provide any.
 
 ### Compilation
 
-    $> git clone git@github.com:arcanis/trivia.ff9 ff9binmaster
-    $> cd ff9binmaster/build
+    $> git clone git@github.com:arcanis/trivia.ff9 ff9-utilities
+    $> cd ff9-utilities/build
     $> cmake .. && make
 
 ## Usage
@@ -44,4 +44,4 @@ If you find an issue in one of the utilities, or want to discuss about a wiki ar
 
 The project is led by [Maël Nison](http://www.arcastel.com).
 
-A lot of informations from this repository (including the wiki) have been gathered from the [Qhimm](http://www.qhimm.com) community work. Thanks !
+A lot of informations from this repository (including the wiki) have been gathered from the [Qhimm](http://www.qhimm.com) community work, especially Zidane_2's utilities. Thanks !
