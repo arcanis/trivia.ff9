@@ -14,7 +14,7 @@ Path::Path( std::string const & orig )
     typedef boost::char_separator< char > separator;
     typedef boost::tokenizer< separator > tokenizer;
 
-    separator sep( "/" );
+    separator sep( "/", "", boost::keep_empty_tokens );
     tokenizer tokens( orig, sep );
 
     for ( tokenizer::iterator it = tokens.begin( ); it != tokens.end( ); ++ it ) {
