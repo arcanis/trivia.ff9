@@ -45,7 +45,21 @@ void parsePack( MemoryRange range, Path outputPath )
     parse( range, qi::byte_, objectCount );
     parse( range, qi::word );
 
-    std::cout << "  Data type    : 0x" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << dataType << std::endl;
+    std::string extension;
+
+    switch ( dataType ) {
+        case 0x04 : extension = ".ff9id"; break ;
+        case 0x0C : extension = ".ff9bs"; break ;
+        case 0x1B : extension = ".ff9db"; break ;
+
+        default :
+            std::ostringstream extensionBuilder;
+            extensionBuilder << ".raw" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << dataType;
+            extension = extensionBuilder.str( );
+        break ;
+    }
+
+    std::cout << "  Data type    : 0x" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << dataType << " (" << extension << ")" << std::endl;
     std::cout << "  Object count : "   << std::dec << objectCount << std::endl;
 
     #define CEIL_FACTOR( N, F ) ( ( N ) % ( F ) == 0 ? ( N ) : ( N ) + ( F ) - ( ( N ) % ( F ) ) )
@@ -85,12 +99,11 @@ void parsePack( MemoryRange range, Path outputPath )
         dataRange.crop( MemoryRange::SeekCur, start, size );
 
         std::stringstream pathBuilder;
-        pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << objectIndex;
+        pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << objectIndex << extension;
 
         Path subOutputPath( outputPath );
         subOutputPath.push( pathBuilder.str( ) );
 
-        suffixize( subOutputPath, dataRange );
         subOutputPath.dump( dataRange );
 
         end = start;
@@ -138,7 +151,7 @@ void parseDB( MemoryRange range, Path outputPath )
         subOutputPath.push( pathBuilder.str( ) );
 
         std::cout << std::endl << "* Extracting #" << pointerIndex << std::endl;
-        parsePack( subRange, outputPath );
+        parsePack( subRange, subOutputPath );
 
     }
 }
