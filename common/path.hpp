@@ -2,6 +2,9 @@
 
 #include <list>
 #include <string>
+#include <vector>
+
+#include <boost/cstdint.hpp>
 
 #include "memoryrange.hpp"
 
@@ -28,7 +31,13 @@ public:
 
 public:
 
+    std::vector< boost::uint8_t > read( void ) const;
+
+public:
+
     Path const & dump( MemoryRange const & range ) const;
+
+    Path const & dumpTga( boost::uint16_t width, boost::uint16_t height, std::vector< boost::uint32_t > const & data ) const;
 
 private:
 

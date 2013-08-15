@@ -1,16 +1,16 @@
 #pragma once
 
-#include <boost/spirit/include/qi.hpp>
-
 #include <iostream>
 #include <stdexcept>
+
+#include <boost/spirit/include/qi.hpp>
 
 #include "memoryrange.hpp"
 
 template < typename Type >
 void parse( MemoryRange & range, Type const & grammar )
 {
-    char const * current = range.current( );
+    boost::uint8_t const * current = range.current( );
 
     if ( ! boost::spirit::qi::parse( current, range.end( ), grammar ) )
         throw std::runtime_error( "Parsing failed" );
@@ -21,7 +21,7 @@ void parse( MemoryRange & range, Type const & grammar )
 template < typename Type, typename Output >
 void parse( MemoryRange & range, Type const & grammar, Output & result )
 {
-    char const * current = range.current( );
+    boost::uint8_t const * current = range.current( );
 
     if ( ! boost::spirit::qi::parse( current, range.end( ), grammar, result ) )
         throw std::runtime_error( "Parsing failed" );

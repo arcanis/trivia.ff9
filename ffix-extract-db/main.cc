@@ -1,3 +1,7 @@
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/positional_options.hpp>
+#include <boost/program_options/variables_map.hpp>
 #include <boost/spirit/include/qi.hpp>
 
 #include <fstream>
@@ -9,27 +13,8 @@
 #include "parse.hpp"
 #include "path.hpp"
 
-namespace spirit = boost::spirit;
-namespace qi = spirit::qi;
-
-void suffixize( Path & outputPath, MemoryRange range )
-{
-    boost::uint32_t mime;
-    std::string suffix = ".raw";
-
-    try {
-
-        parse( range, qi::byte_, mime );
-
-        if ( mime == 0xDB )
-            suffix = ".ff9db";
-
-    } catch ( ... ) {
-
-    }
-
-    outputPath.push( suffix );
-}
+namespace po = boost::program_options;
+namespace qi = boost::spirit::qi;
 
 ////////////
 // 1 byte  : data type
@@ -48,7 +33,7 @@ void parsePack( MemoryRange range, Path outputPath )
     std::string extension;
 
     switch ( dataType ) {
-        case 0x04 : extension = ".ff9id"; break ;
+        case 0x04 : extension = ".tim";   break ;
         case 0x0C : extension = ".ff9bs"; break ;
         case 0x1B : extension = ".ff9db"; break ;
 
@@ -158,26 +143,35 @@ void parseDB( MemoryRange range, Path outputPath )
 
 int main( int argc, char ** argv )
 {
-    if ( argc >= 3 ) {
+    po::options_description options( "Allowed options" );
+    options.add_options( )( "input", po::value< std::string >( ) );
+    options.add_options( )( "output", po::value< std::string >( ) );
 
-        std::ifstream db( argv[ 1 ], std::ios::in | std::ios::binary | std::ios::ate );
-        std::ifstream::pos_type size = db.tellg( );
-        db.seekg( 0, std::ios::beg );
+    po::positional_options_description positional;
+    positional.add( "input", 1 );
+    positional.add( "output", 1 );
 
-        char * begin = new char[ size ];
-        db.read( begin, size );
-        db.close( );
+    po::variables_map vm;
+    po::store( po::command_line_parser( argc, argv ).options( options ).positional( positional ).run( ), vm );
+    po::notify( vm );
 
-        MemoryRange range( begin, begin + size );
-        parseDB( range, Path( argv[ 2 ] ) );
+    if ( vm.count( "input" ) && vm.count( "output" ) ) {
 
-        delete[] begin;
+        Path input( vm[ "input" ].as< std::string >( ) );
+        Path output( vm[ "output" ].as< std::string >( ) );
+
+        auto content = input.read( );
+        MemoryRange range( content );
+
+        parseDB( range, output );
 
         return 0;
 
     } else {
 
-        std::cerr << "Usage: " << argv[ 0 ] << " \"<source path>\" \"<destination path>\"" << std::endl;
+        std::cerr << "Usage: " << argv[ 0 ] << " [options] <*.ff9db path> <destination path>" << std::endl;
+        std::cerr << options;
+
         return -1;
 
     }

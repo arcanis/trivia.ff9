@@ -1,10 +1,19 @@
 #include <algorithm>
 #include <sstream>
 #include <stdexcept>
+#include <vector>
+
+#include <boost/cstdint.hpp>
 
 #include "memoryrange.hpp"
 
-MemoryRange::MemoryRange( char const * begin, char const * end )
+MemoryRange::MemoryRange( std::vector< boost::uint8_t > const & data )
+    : m_begin( & data[ 0 ] )
+    , m_end( m_begin + data.size( ) )
+{
+}
+
+MemoryRange::MemoryRange( boost::uint8_t const * begin, boost::uint8_t const * end )
 {
     if ( begin > end )
         std::swap( begin, end );
@@ -15,7 +24,7 @@ MemoryRange::MemoryRange( char const * begin, char const * end )
 
 unsigned long MemoryRange::seek( SeekSource whence, long offset )
 {
-    char const * current;
+    boost::uint8_t const * current;
 
     switch ( whence ) {
 
@@ -57,7 +66,7 @@ unsigned long MemoryRange::seek( SeekSource whence, long offset )
 
 unsigned long MemoryRange::crop( SeekSource whence, unsigned long offset, unsigned long size )
 {
-    char const * begin, * end;
+    boost::uint8_t const * begin, * end;
 
     switch ( whence ) {
 

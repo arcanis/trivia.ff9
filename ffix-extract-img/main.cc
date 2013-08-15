@@ -1,3 +1,7 @@
+#include <boost/program_options/options_description.hpp>
+#include <boost/program_options/parsers.hpp>
+#include <boost/program_options/positional_options.hpp>
+#include <boost/program_options/variables_map.hpp>
 #include <boost/spirit/include/qi.hpp>
 
 #include <fstream>
@@ -5,14 +9,13 @@
 #include <iostream>
 #include <stdexcept>
 
+#include "constants.hpp"
 #include "memoryrange.hpp"
 #include "parse.hpp"
 #include "path.hpp"
 
-#define SECTOR 2048
-
-namespace spirit = boost::spirit;
-namespace qi = spirit::qi;
+namespace po = boost::program_options;
+namespace qi = boost::spirit::qi;
 
 void suffixize( Path & outputPath, MemoryRange range )
 {
@@ -47,8 +50,8 @@ void parseFile( MemoryRange range, Path outputPath, unsigned long & endSector )
     parse( range, qi::little_word );
     parse( range, qi::little_dword, beginSector );
 
-    unsigned long offset = beginSector * SECTOR;
-    unsigned long size = ( endSector - beginSector ) * SECTOR;
+    unsigned long offset = beginSector * SECTOR_LENGTH;
+    unsigned long size = ( endSector - beginSector ) * SECTOR_LENGTH;
 
     MemoryRange dataRange( range );
     dataRange.crop( MemoryRange::SeekSet, offset, size );
@@ -72,8 +75,8 @@ void parseFragment( MemoryRange range, Path outputPath, unsigned long baseSector
 
     boost::uint32_t beginSector = baseSector + fragmentSector;
 
-    unsigned long offset = beginSector * SECTOR;
-    unsigned long size = ( endSector - beginSector ) * SECTOR;
+    unsigned long offset = beginSector * SECTOR_LENGTH;
+    unsigned long size = ( endSector - beginSector ) * SECTOR_LENGTH;
 
     MemoryRange dataRange( range );
     dataRange.crop( MemoryRange::SeekSet, offset, size );
@@ -105,7 +108,7 @@ void parseContainer( MemoryRange range, Path outputPath, unsigned long & endSect
     std::cout << "  Container type : 0x" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << type << std::endl;
     std::cout << "  Entry count    : "   << std::dec << entryCount << std::endl;
 
-    range.seek( MemoryRange::SeekSet, entryListSector * SECTOR );
+    range.seek( MemoryRange::SeekSet, entryListSector * SECTOR_LENGTH );
 
     for ( unsigned long entryIndex = entryCount; entryIndex --;  ) {
 
@@ -134,7 +137,7 @@ void parseContainer( MemoryRange range, Path outputPath, unsigned long & endSect
     }
 
     if ( type == 0x04 ) {
-        endSector = ( range.end( ) - range.begin( ) ) / SECTOR;
+        endSector = ( range.end( ) - range.begin( ) ) / SECTOR_LENGTH;
     } else {
         endSector = baseSector;
     }
@@ -182,29 +185,35 @@ void parseImage( MemoryRange range, Path outputPath )
 
 int main( int argc, char ** argv )
 {
-    if ( argc >= 3 ) {
+    po::options_description options( "Allowed options" );
+    options.add_options( )( "input", po::value< std::string >( ) );
+    options.add_options( )( "output", po::value< std::string >( ) );
 
-        std::ifstream archive( argv[ 1 ], std::ios::in | std::ios::binary | std::ios::ate );
-        std::ifstream::pos_type size = archive.tellg( );
-        archive.seekg( 0, std::ios::beg );
+    po::positional_options_description positional;
+    positional.add( "input", 1 );
+    positional.add( "output", 1 );
 
-        char * begin = new char[ size ];
-        archive.read( begin, size );
-        archive.close( );
+    po::variables_map vm;
+    po::store( po::command_line_parser( argc, argv ).options( options ).positional( positional ).run( ), vm );
+    po::notify( vm );
 
-        Path outputPath( argv[ 2 ] );
-        outputPath.push( "ff9" );
+    if ( vm.count( "input" ) && vm.count( "output" ) ) {
 
-        MemoryRange range( begin, begin + size );
-        parseImage( range, outputPath );
+        Path input( vm[ "input" ].as< std::string >( ) );
+        Path output( vm[ "output" ].as< std::string >( ) );
 
-        delete[] begin;
+        auto content = input.read( );
+        MemoryRange range( content );
+
+        parseImage( range, output );
 
         return 0;
 
     } else {
 
-        std::cerr << "Usage: " << argv[ 0 ] << " \"<source path>\" \"<destination path>\"" << std::endl;
+        std::cerr << "Usage: " << argv[ 0 ] << " [options] <FF9.IMG path> <destination path>" << std::endl;
+        std::cerr << options;
+
         return -1;
 
     }
