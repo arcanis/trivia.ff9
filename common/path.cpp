@@ -52,20 +52,26 @@ std::vector< boost::uint8_t > Path::read( void ) const
     return std::move( data );
 }
 
-Path const & Path::dump( MemoryRange const & range ) const
+Path const & Path::dump( char const * data, unsigned int size ) const
 {
     boost::filesystem::path pathname( this->string( ) );
 
     std::string dirname = pathname.parent_path( ).string( );
-    boost::filesystem::create_directories( dirname );
+    if ( ! dirname.empty( ) )
+        boost::filesystem::create_directories( dirname );
 
     std::ofstream output;
     output.exceptions( std::ios_base::failbit | std::ios_base::badbit );
     output.open( pathname.string( ).c_str( ), std::ios_base::out | std::ios_base::binary | std::ios_base::trunc );
-    output.write( reinterpret_cast< char const * >( range.current( ) ), range.end( ) - range.current( ) );
+    output.write( data, size );
     output.close( );
 
     return * this;
+}
+
+Path const & Path::dump( MemoryRange const & range ) const
+{
+    return this->dump( reinterpret_cast< char const * >( range.current( ) ), range.end( ) - range.current( ) );
 }
 
 Path const & Path::dumpTga( boost::uint16_t width, boost::uint16_t height, std::vector< boost::uint32_t > const & data ) const
@@ -73,7 +79,8 @@ Path const & Path::dumpTga( boost::uint16_t width, boost::uint16_t height, std::
     boost::filesystem::path pathname( this->string( ) );
 
     std::string dirname = pathname.parent_path( ).string( );
-    boost::filesystem::create_directories( dirname );
+    if ( ! dirname.empty( ) )
+        boost::filesystem::create_directories( dirname );
 
     std::ofstream output;
     output.exceptions( std::ios_base::failbit | std::ios_base::badbit );
@@ -82,13 +89,13 @@ Path const & Path::dumpTga( boost::uint16_t width, boost::uint16_t height, std::
     boost::uint16_t littleEndianWidth = native_to_little_u16( width );
     boost::uint16_t littleEndianHeight = native_to_little_u16( height );
 
-    output.write( "\x00\x00\x20", 3 );                                           // no ID field, no color map, uncompressed true-color
+    output.write( "\x00\x00\x02", 3 );                                           // no ID field, no color map, uncompressed true-color
     output.write( "\x00\x00\x00\x00\x00", 5 );                                   // color palette (no)
     output.write( "\x00\x00\x00\x00", 4 );                                       // image origin (x:0 & y:0)
     output.write( reinterpret_cast< char const * >( & littleEndianWidth ), 2 );  // image width
     output.write( reinterpret_cast< char const * >( & littleEndianHeight ), 2 ); // image height
-    output.write( "\0x20", 1 );                                                  // bpp (32)
-    output.write( "\0x20", 1 );                                                  // descriptor (origin in upper left-hand)
+    output.write( "\x20", 1 );                                                   // bpp (32)
+    output.write( "\x20", 1 );                                                   // descriptor (origin in upper left-hand)
 
     boost::uint32_t littleEndianData[ width * height ];
     std::transform( data.begin( ), data.end( ), littleEndianData, & native_to_little_u32 );

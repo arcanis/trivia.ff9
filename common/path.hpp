@@ -35,6 +35,8 @@ public:
 
 public:
 
+    Path const & dump( char const * data, unsigned int size ) const;
+
     Path const & dump( MemoryRange const & range ) const;
 
     Path const & dumpTga( boost::uint16_t width, boost::uint16_t height, std::vector< boost::uint32_t > const & data ) const;

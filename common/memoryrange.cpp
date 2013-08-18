@@ -9,6 +9,7 @@
 
 MemoryRange::MemoryRange( std::vector< boost::uint8_t > const & data )
     : m_begin( & data[ 0 ] )
+    , m_current( m_begin )
     , m_end( m_begin + data.size( ) )
 {
 }

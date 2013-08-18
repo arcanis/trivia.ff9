@@ -33,23 +33,23 @@ TIM TIM::fromRange( MemoryRange range )
     boost::uint8_t bpp = flags & 0x00000003;
     bpp = bpp ? bpp * 8 : 4;
 
-    parse( range, qi::dword );
-    parse( range, qi::dword );
+    parse( range, qi::word );
+    parse( range, qi::word );
 
     boost::uint16_t imageXOrigin;
-    parse( range, qi::dword, imageXOrigin );
+    parse( range, qi::word, imageXOrigin );
 
     boost::uint16_t imageYOrigin;
-    parse( range, qi::dword, imageYOrigin );
+    parse( range, qi::word, imageYOrigin );
 
     boost::uint16_t imageWidth;
-    parse( range, qi::dword, imageWidth );
+    parse( range, qi::word, imageWidth );
     imageWidth = imageWidth * ( 16.0 / bpp );
 
     boost::uint16_t imageHeight;
-    parse( range, qi::dword, imageHeight );
+    parse( range, qi::word, imageHeight );
 
-    return TIM( imageXOrigin, imageYOrigin, imageWidth, imageHeight, std::vector< boost::uint8_t >( range.current( ), range.end( ) ) );
+    return TIM( imageXOrigin, imageYOrigin, imageWidth, imageHeight, bpp, std::vector< boost::uint8_t >( range.current( ), range.end( ) ) );
 }
 
 TIM TIM::fromFile( std::string const & path )
@@ -63,9 +63,16 @@ TIM TIM::fromFile( std::string const & path )
 
 TIM const & TIM::apply( VRAM & vram ) const
 {
-    for ( int y = m_top, ry = 0; ry < m_height; ++ y, ++ ry ) {
-        for ( int x = m_left, rx = 0; rx < m_width; ++ x, ++ rx ) {
-            vram[ y * VRAM_WIDTH + x ] = m_data[ ry * m_width + rx ];
+    #define CEIL( n, factor ) ( ( n ) + ( ( n ) % ( factor ) ? ( factor ) - ( n ) % ( factor ) : 0 ) )
+    unsigned char bytes = CEIL( m_bpp, 8 ) / 8;
+    unsigned int byteWidth = CEIL( m_width * m_bpp, 8 ) / 8;
+
+    for ( unsigned int y = m_top, ry = 0; ry < m_height; ++ y, ++ ry ) {
+        boost::uint8_t const * from = & m_data[ ry * byteWidth ];
+        boost::uint8_t * to = reinterpret_cast< boost::uint8_t * >( & vram[ y * VRAM_WIDTH + m_left ] );
+
+        for ( int t = 0; t < byteWidth; ++ t ) {
+            to[ t ] = from[ t ];
         }
     }
 

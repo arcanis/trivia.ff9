@@ -186,8 +186,8 @@ void parseImage( MemoryRange range, Path outputPath )
 int main( int argc, char ** argv )
 {
     po::options_description options( "Allowed options" );
-    options.add_options( )( "input", po::value< std::string >( ) );
-    options.add_options( )( "output", po::value< std::string >( ) );
+    options.add_options( )( "input", po::value< std::string >( )->required( ) );
+    options.add_options( )( "output", po::value< std::string >( )->required( ) );
 
     po::positional_options_description positional;
     positional.add( "input", 1 );

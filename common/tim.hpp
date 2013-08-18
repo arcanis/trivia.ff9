@@ -18,7 +18,7 @@ public:
 
 public:
 
-    inline TIM( boost::uint32_t left, boost::uint32_t top, boost::uint32_t width, boost::uint32_t height, std::vector< boost::uint8_t > data );
+    inline TIM( boost::uint32_t left, boost::uint32_t top, boost::uint32_t width, boost::uint32_t height, boost::uint8_t bpp, std::vector< boost::uint8_t > data );
 
 public:
 
@@ -29,6 +29,8 @@ public:
     inline boost::uint32_t width( void ) const;
 
     inline boost::uint32_t height( void ) const;
+
+    inline boost::uint8_t bpp( void ) const;
 
     inline std::vector< boost::uint8_t > const & data( void ) const;
 
@@ -48,15 +50,18 @@ private:
 
     boost::uint32_t m_height;
 
+    boost::uint8_t m_bpp;
+
     std::vector< boost::uint8_t > m_data;
 
 };
 
-TIM::TIM( boost::uint32_t left, boost::uint32_t top, boost::uint32_t width, boost::uint32_t height, std::vector< boost::uint8_t > data )
+TIM::TIM( boost::uint32_t left, boost::uint32_t top, boost::uint32_t width, boost::uint32_t height, boost::uint8_t bpp, std::vector< boost::uint8_t > data )
     : m_left( left )
     , m_top( top )
     , m_width( width )
     , m_height( height )
+    , m_bpp( bpp )
     , m_data( data )
 {
 }
@@ -79,6 +84,11 @@ boost::uint32_t TIM::width( void ) const
 boost::uint32_t TIM::height( void ) const
 {
     return m_height;
+}
+
+boost::uint8_t TIM::bpp( void ) const
+{
+    return m_bpp;
 }
 
 std::vector< boost::uint8_t > const & TIM::data( void ) const

@@ -44,43 +44,44 @@ void parsePack( MemoryRange range, Path outputPath )
         break ;
     }
 
-    std::cout << "  Data type    : 0x" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << dataType << " (" << extension << ")" << std::endl;
-    std::cout << "  Object count : "   << std::dec << objectCount << std::endl;
+    std::cout << "   Data type    : 0x" << std::hex << std::setfill( '0' ) << std::setw( 2 ) << dataType << " (" << extension << ")" << std::endl;
+    std::cout << "   Object count : "   << std::dec << objectCount << std::endl;
 
     #define CEIL_FACTOR( N, F ) ( ( N ) % ( F ) == 0 ? ( N ) : ( N ) + ( F ) - ( ( N ) % ( F ) ) )
-    int identifierSize = CEIL_FACTOR( objectCount * 2, 4 );
-    int startSize = CEIL_FACTOR( objectCount * 4, 4 );
 
-    boost::uint32_t end;
+    int identifiersByteLength = CEIL_FACTOR( objectCount * 2, 4 );
+    int pointersByteLength = CEIL_FACTOR( ( objectCount + 1 ) * 4, 4 );
 
-    MemoryRange endRange( range );
-    endRange.seek( MemoryRange::SeekCur, identifierSize + startSize );
-    parse( endRange, qi::little_dword, end );
+    MemoryRange identifiersRange( range );
+    identifiersRange.crop( MemoryRange::SeekCur, 0, identifiersByteLength );
 
-    for ( unsigned long objectIndex = objectCount; objectIndex --; ) {
+    MemoryRange pointersRange( range );
+    pointersRange.crop( MemoryRange::SeekCur, identifiersByteLength, pointersByteLength );
 
-        boost::uint32_t identifier, start;
+    for ( unsigned long objectIndex = 0; objectIndex < objectCount; ++ objectIndex ) {
 
-        MemoryRange identifierRange( range );
-        identifierRange.seek( MemoryRange::SeekCur, 0 );
-        identifierRange.seek( MemoryRange::SeekCur, objectIndex * 2 );
-        parse( identifierRange, qi::little_word, identifier );
+        boost::uint32_t identifier, start, end;
 
-        MemoryRange startRange( range );
-        startRange.seek( MemoryRange::SeekCur, identifierSize );
-        startRange.seek( MemoryRange::SeekCur, objectIndex * 4 );
-        parse( startRange, qi::little_dword, start );
+        identifiersRange.seek( MemoryRange::SeekSet, objectIndex * 2 );
+        parse( identifiersRange, qi::little_word, identifier );
+
+        pointersRange.seek( MemoryRange::SeekSet, objectIndex * 4 );
+        parse( pointersRange, qi::little_dword, start );
+        parse( pointersRange, qi::little_dword, end );
+        start += identifiersByteLength + objectIndex * 4;
+        end += identifiersByteLength + objectIndex * 4 + 4;
 
         unsigned long size = end - start;
 
         std::cout << std::endl;
-        std::cout << "  * Unpacking #" << objectIndex << std::endl;
-        std::cout << "    Identifier    : " << identifier << std::endl;
-        std::cout << "    Pointer start : " << start << std::endl;
-        std::cout << "    Size          : " << size << " byte(s)" << std::endl;
+        std::cout << "    - Unpacking #" << objectIndex << std::endl;
+        std::cout << "      Identifier    : " << identifier << std::endl;
+        std::cout << "      Start pointer : " << start << std::endl;
+        std::cout << "      End pointer   : " << end << std::endl;
+        std::cout << "      Size          : " << size << " byte(s)" << std::endl;
 
         MemoryRange dataRange( range );
-        dataRange.seek( MemoryRange::SeekCur, identifierSize + objectIndex * 4 );
+        dataRange.seek( MemoryRange::SeekCur, identifiersByteLength + objectIndex * 4 );
         dataRange.crop( MemoryRange::SeekCur, start, size );
 
         std::stringstream pathBuilder;
@@ -90,8 +91,6 @@ void parsePack( MemoryRange range, Path outputPath )
         subOutputPath.push( pathBuilder.str( ) );
 
         subOutputPath.dump( dataRange );
-
-        end = start;
 
     }
 }
@@ -135,7 +134,7 @@ void parseDB( MemoryRange range, Path outputPath )
         Path subOutputPath( outputPath );
         subOutputPath.push( pathBuilder.str( ) );
 
-        std::cout << std::endl << "* Extracting #" << pointerIndex << std::endl;
+        std::cout << std::endl << " - Extracting #" << pointerIndex << std::endl;
         parsePack( subRange, subOutputPath );
 
     }
@@ -144,8 +143,8 @@ void parseDB( MemoryRange range, Path outputPath )
 int main( int argc, char ** argv )
 {
     po::options_description options( "Allowed options" );
-    options.add_options( )( "input", po::value< std::string >( ) );
-    options.add_options( )( "output", po::value< std::string >( ) );
+    options.add_options( )( "input", po::value< std::string >( )->required( ) );
+    options.add_options( )( "output", po::value< std::string >( )->required( ) );
 
     po::positional_options_description positional;
     positional.add( "input", 1 );

@@ -22,17 +22,27 @@ You will have to use your own FF9.IMG file, we won't provide any.
 
 ### ffix-extract-img
 
-    $> ffix-extract-img "<FF9.IMG path>" "<destination folder>"
+    $> ffix-extract-img <FF9.IMG path> <destination folder>
 
 This utility extracts the FF9.IMG directory tree into the specified destination folder. The files can then be read by the other tools of the suite.
 
 ### ffix-extract-db
 
-    $> ffix-extract-db "<*.ff9db path>" "<destination folder>"
+    $> ffix-extract-db <.ff9db path> <destination folder>
 
 This utility extracts the files from the DB file.
 
 **Note** It can happen that a DB file contains other DB files.
+
+### ffix-convert-ff9bs
+
+    $> ffix-convert-ff9bs <.ff9bs path> <destination folder> [--tim <.tim file>, [--tim <.tim file>]]
+
+This utility converts a FF9 battle scene into an OBJ file. Model textures are also exported in the same pass.
+
+You can (and probably should) specify TIM files which will be loaded into the VRAM. Without this, exported textures will be black.
+
+**Note** For reference, battle scenes are located in the folder 06 of the extracted image tree.
 
 ## Help
 

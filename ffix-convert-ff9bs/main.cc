@@ -35,14 +35,12 @@ boost::uint8_t primitivePalette[] = {
 //
 //
 
-void parseTextures( VRAM const & vram, MemoryRange range, Path outputPath )
+void parseTextures( VRAM const & vram, MemoryRange range, Path outputPath, boost::uint16_t textureCount )
 {
-    int textureCount = range.size( ) / 4;
-
-    for ( int t = 0; t < textureCount; ++ t ) {
+    for ( boost::uint16_t textureIndex = 0; textureIndex < textureCount; ++ textureIndex ) {
 
         // binary packet structure :
-        // aaaaaaaa bbbbbbbb cccccccc dddddddd
+        // aaaaaaaa aabbbbbb ???????? ccccdddd
         //
         // a : palyy
         // b : palxx
@@ -50,30 +48,26 @@ void parseTextures( VRAM const & vram, MemoryRange range, Path outputPath )
         // c : texture Y
         // d : texture X
 
-        boost::uint8_t palY;
-        parse( range, qi::byte_, palY );
+        boost::uint32_t packet;
+        parse( range, qi::dword, packet );
 
-        boost::uint8_t palX;
-        parse( range, qi::byte_, palX );
-
-        boost::uint8_t texY;
-        parse( range, qi::byte_, texY );
-
-        boost::uint8_t texX;
-        parse( range, qi::byte_, texX );
+        boost::uint8_t palX = ( ( packet >> 16 ) & 0x3F ) * 16 * 2;
+        boost::uint8_t palY = ( ( packet >> 22 ) );
+        boost::uint8_t texX = ( packet >> 0 ) & 0xF;
+        boost::uint8_t texY = ( packet >> 4 ) & 0x1;
 
         // Palette generation
 
-        boost::uint32_t palette[ SIZE( BATTLESCENE_PALETTE ) ];
+        boost::uint32_t palette[ SIZE( BATTLESCENE_PALETTE ) ] = { };
 
         for ( int u = 0; u < SIZE( BATTLESCENE_PALETTE ); ++ u ) {
 
-            boost::uint16_t colorIndex = vram[ palY * VRAM_HEIGHT + palX + u ];
+            boost::uint16_t colorIndex = vram[ palY * VRAM_WIDTH + palX + u ];
 
             palette[ u ]
-                = ( primitivePalette[ ( colorIndex >>  0 ) & 0x1f ] <<  0 )
+                = ( primitivePalette[ ( colorIndex >>  0 ) & 0x1f ] << 16 )
                 | ( primitivePalette[ ( colorIndex >>  5 ) & 0x1f ] <<  8 )
-                | ( primitivePalette[ ( colorIndex >> 10 ) & 0x1f ] << 16 )
+                | ( primitivePalette[ ( colorIndex >> 10 ) & 0x1f ] <<  0 )
                 ;
 
             if ( ( colorIndex & 0x8000 ) == 0x8000 ) {
@@ -88,47 +82,74 @@ void parseTextures( VRAM const & vram, MemoryRange range, Path outputPath )
 
         for ( boost::uint32_t y = 0; y < BATTLESCENE_TEXTURE_HEIGHT; ++ y ) {
             for ( boost::uint32_t x = 0; x < BATTLESCENE_TEXTURE_WIDTH; ++ x ) {
-                data[ y * BATTLESCENE_TEXTURE_HEIGHT + x ] = palette[
-                    + texX * BATTLESCENE_CELL_WIDTH
-                    + texY * BATTLESCENE_CELL_HEIGHT * VRAM_WIDTH
-                    + x
-                    + y * VRAM_WIDTH
-                ];
+                boost::uint32_t absoluteX = texX * BATTLESCENE_CELL_WIDTH + x;
+                boost::uint32_t absoluteY = texY * BATTLESCENE_CELL_HEIGHT + y;
+                data[ y * BATTLESCENE_TEXTURE_HEIGHT + x ] = palette[ vram[ absoluteY * VRAM_WIDTH + absoluteX ] & 0xFF ];
             }
         }
 
         // Store to disk
 
-        outputPath.dumpTga( BATTLESCENE_TEXTURE_WIDTH, BATTLESCENE_TEXTURE_HEIGHT, data );
+        std::cout << std::endl;
+        std::cout << " - Processing #" << textureIndex << std::endl;
+
+        std::ostringstream pathBuilder;
+        pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << textureIndex << ".tga";
+
+        Path subOutputPath( outputPath );
+        subOutputPath.push( pathBuilder.str( ) );
+
+        subOutputPath.dumpTga( BATTLESCENE_TEXTURE_WIDTH, BATTLESCENE_TEXTURE_HEIGHT, data );
 
     }
 }
 
 ////////////
-// 2 bytes : size
-// 2 bytes : ???
+// 4 bytes : ???
 // 2 bytes : object count
-// 2 bytes : object structures offset
-// 2 bytes : GPU dummy packet count
-// 2 bytes : vertex count
-// 2 bytes : 0b00000111
-// 2 bytes : 0b00000111
-// 2 bytes : 0b00000111
-// 2 bytes : 0b00000111
-// 2 bytes : 0b00000111
-// 2 bytes : 0b00000111
+// 2 bytes : ???
+// 2 bytes : texture count
+// 2 bytes : textures offset
+// 2 bytes : ???
+// 2 bytes : object offset
 
 void parseBattleScene( VRAM const & vram, MemoryRange range, Path outputPath )
 {
-    //
+    parse( range, qi::dword );
+
+    boost::uint16_t objectCount;
+    parse( range, qi::word, objectCount );
+
+    parse( range, qi::word );
+
+    boost::uint16_t textureCount;
+    parse( range, qi::word, textureCount );
+
+    boost::uint16_t texturesOffset;
+    parse( range, qi::word, texturesOffset );
+
+    parse( range, qi::word );
+
+    boost::uint16_t verticesOffset;
+    parse( range, qi::word, verticesOffset );
+
+    std::cout << "Object count  : " << objectCount << std::endl;
+    std::cout << "Texture count : " << textureCount << std::endl;
+    std::cout << std::endl;
+
+    MemoryRange subTexturesRange( range );
+    subTexturesRange.seek( MemoryRange::SeekSet, texturesOffset );
+
+    std::cout << "Parsing textures :" << std::endl;
+    parseTextures( vram, subTexturesRange, outputPath, textureCount );
 }
 
 int main( int argc, char ** argv )
 {
     po::options_description options( "Allowed options" );
-    options.add_options( )( "texture", po::value< std::vector< std::string > >( ) );
-    options.add_options( )( "input", po::value< std::string >( ) );
-    options.add_options( )( "output", po::value< std::string >( ) );
+    options.add_options( )( "tim", po::value< std::vector< std::string > >( )->default_value( std::vector< std::string >( ), "" ), "Image clusters (TIM files)" );
+    options.add_options( )( "input", po::value< std::string >( )->required( ) );
+    options.add_options( )( "output", po::value< std::string >( )->required( ) );
 
     po::positional_options_description positional;
     positional.add( "input", 1 );
@@ -140,11 +161,18 @@ int main( int argc, char ** argv )
 
     if ( vm.count( "input" ) && vm.count( "output" ) ) {
 
-        VRAM vram;
+        VRAM vram = { };
 
-        std::vector< std::string > textures = vm[ "textures" ].as< std::vector< std::string > >( );
-        for ( std::vector< std::string >::iterator it = textures.begin( ), end = textures.end( ); it != end; ++ it )
-            TIM::fromFile( * it ).apply( vram );
+        auto textures = vm[ "tim" ].as< std::vector< std::string > >( );
+        for ( std::string const & path : textures ) {
+            TIM tim = TIM::fromFile( path );
+
+            std::cout << "Loading " << path << " into VRAM ..." << std::endl;
+            std::cout << "    Import takes place at X " << tim.left( ) << ", Y " << tim.top( ) << ", W " << tim.width( ) << " and H " << tim.height( ) << std::endl;
+            std::cout << std::endl;
+
+            tim.apply( vram );
+        }
 
         Path input( vm[ "input" ].as< std::string >( ) );
         Path output( vm[ "output" ].as< std::string >( ) );
