@@ -34,13 +34,15 @@ This utility extracts the files from the DB file.
 
 **Note** It can happen that a DB file contains other DB files.
 
-### ffix-convert-ff9bs
+### ffix-convert-bs
 
-    $> ffix-convert-ff9bs <.ff9bs path> <destination folder> [--tim <.tim file>, [--tim <.tim file>]]
+    $> ffix-convert-bs <.ff9bs path> <destination folder> [--tim <.tim file>, [--tim <.tim file>]] [--fake-textures-extension <.ext>]
 
 This utility converts a FF9 battle scene into an OBJ file. Model textures are also exported in the same pass.
 
 You can (and probably should) specify TIM files which will be loaded into the VRAM. Without this, exported textures will be black.
+
+The exported textures will be in TGA 32-bits file format (even if you specify `--fake-textures-extension`). However, the `--fake-textures-extensions` will change the file extension used in the `materials.mtl` file. It will then be up to you to convert the textures from the TGA files (we advice the `mogrify` utility, from the imagemagick toolset).
 
 **Note** For reference, battle scenes are located in the folder 06 of the extracted image tree.
 
