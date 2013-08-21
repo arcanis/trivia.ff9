@@ -81,7 +81,6 @@ void parsePack( MemoryRange range, Path outputPath )
         std::cout << "      Size          : " << size << " byte(s)" << std::endl;
 
         MemoryRange dataRange( range );
-        dataRange.seek( MemoryRange::SeekCur, identifiersByteLength + objectIndex * 4 );
         dataRange.crop( MemoryRange::SeekCur, start, size );
 
         std::stringstream pathBuilder;

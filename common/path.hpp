@@ -27,7 +27,9 @@ public:
 
 public:
 
-    std::string string(void) const;
+    std::string filename( void ) const;
+
+    std::string string( void ) const;
 
 public:
 
@@ -38,6 +40,10 @@ public:
     Path const & dump( char const * data, unsigned int size ) const;
 
     Path const & dump( MemoryRange const & range ) const;
+
+    Path const & dump( std::string const & text ) const;
+
+    Path const & dumpBmp( boost::uint16_t width, boost::uint16_t height, std::vector< boost::uint32_t > const & data ) const;
 
     Path const & dumpTga( boost::uint16_t width, boost::uint16_t height, std::vector< boost::uint32_t > const & data ) const;
 
