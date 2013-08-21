@@ -4,11 +4,11 @@ include_directories(
     ../common
 )
 
-add_executable(ffix-convert-ff9bs
+add_executable(ffix-convert-bs
     main.cc
 )
 
-target_link_libraries(ffix-convert-ff9bs
+target_link_libraries(ffix-convert-bs
     common
     boost_filesystem
     boost_program_options

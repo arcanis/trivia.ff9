@@ -16,7 +16,7 @@ MONSTERS_DIR="${TARGET_DIR}"/monsters
 
 FFIX_EXTRACT_IMG="${BINARY_DIR}"/ffix-extract-img
 FFIX_EXTRACT_DB="${BINARY_DIR}"/ffix-extract-db
-FFIX_CONVERT_BS="${BINARY_DIR}"/ffix-convert-ff9bs
+FFIX_CONVERT_BS="${BINARY_DIR}"/ffix-convert-bs
 
 ## Clean logs
 
