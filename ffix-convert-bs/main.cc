@@ -19,7 +19,11 @@
 namespace po = boost::program_options;
 namespace qi = boost::spirit::qi;
 
-boost::uint8_t primitivePalette[] = {
+// Base color palette used for battle scenes.
+// Each value in the textures is actually an index to one of this array's cells.
+//
+
+boost::uint8_t g_primitivePalette[] = {
 
       0,   8,  16,  24,
      32,  40,  48,  56,
@@ -31,6 +35,12 @@ boost::uint8_t primitivePalette[] = {
     232, 240, 246, 255
 
 };
+
+// Texture extension in the material file.
+// Does not affect the actual format of exported textures, which will always be TGA.
+//
+
+std::string g_fakeTexturesExtension;
 
 //
 //
@@ -63,9 +73,9 @@ void parseTexture( VRAM const & vram, MemoryRange range, Path outputPath, boost:
         boost::uint16_t colorIndex = vram[ palY * VRAM_WIDTH + palX + u ];
 
         palette[ u ]
-            = ( primitivePalette[ ( colorIndex >>  0 ) & 0x1f ] << 16 )
-            | ( primitivePalette[ ( colorIndex >>  5 ) & 0x1f ] <<  8 )
-            | ( primitivePalette[ ( colorIndex >> 10 ) & 0x1f ] <<  0 )
+            = ( g_primitivePalette[ ( colorIndex >>  0 ) & 0x1f ] << 16 )
+            | ( g_primitivePalette[ ( colorIndex >>  5 ) & 0x1f ] <<  8 )
+            | ( g_primitivePalette[ ( colorIndex >> 10 ) & 0x1f ] <<  0 )
             ;
 
         if ( ( colorIndex & 0x8000 ) == 0x8000 ) {
@@ -89,7 +99,7 @@ void parseTexture( VRAM const & vram, MemoryRange range, Path outputPath, boost:
 
     // Store to disk
 
-    outputPath.dumpBmp( BATTLESCENE_TEXTURE_WIDTH, BATTLESCENE_TEXTURE_HEIGHT, data );
+    outputPath.dumpTga( BATTLESCENE_TEXTURE_WIDTH, BATTLESCENE_TEXTURE_HEIGHT, data );
 
 }
 
@@ -138,11 +148,13 @@ void parseBattleScene( VRAM const & vram, MemoryRange range, Path outputPath )
 
     for ( boost::uint16_t textureIndex = 0; textureIndex < textureCount; ++ textureIndex ) {
 
-        std::ostringstream pathBuilder;
-        pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << textureIndex << ".bmp";
+        std::ostringstream pathBuilder, fakePathBuilder;
+        pathBuilder << std::setfill( '0' ) << std::setw( 3 ) << textureIndex << ".tga";
+        fakePathBuilder << std::setfill( '0' ) << std::setw( 3 ) << textureIndex << g_fakeTexturesExtension;
 
-        Path subOutputPath( outputPath );
+        Path subOutputPath( outputPath ), subFakeOutputPath( outputPath );
         subOutputPath.push( pathBuilder.str( ) );
+        subFakeOutputPath.push( fakePathBuilder.str( ) );
 
         std::cout << std::endl;
         std::cout << " - Processing texture #" << textureIndex << std::endl;
@@ -159,7 +171,7 @@ void parseBattleScene( VRAM const & vram, MemoryRange range, Path outputPath )
         material << "Ks 0 0 0" << std::endl;
         material << "d 1" << std::endl;
         material << "illum 0" << std::endl;
-        material << "map_Kd " << subOutputPath.filename( ) << std::endl;
+        material << "map_Kd " << subFakeOutputPath.filename( ) << std::endl;
 
     }
 
@@ -315,6 +327,7 @@ int main( int argc, char ** argv )
     options.add_options( )( "tim", po::value< std::vector< std::string > >( )->default_value( std::vector< std::string >( ), "" ), "Image clusters (TIM files)" );
     options.add_options( )( "input", po::value< std::string >( )->required( ) );
     options.add_options( )( "output", po::value< std::string >( )->required( ) );
+    options.add_options( )( "fake-textures-extension", po::value< std::string >( )->default_value( ".tga" ) );
 
     po::positional_options_description positional;
     positional.add( "input", 1 );
@@ -323,6 +336,8 @@ int main( int argc, char ** argv )
     po::variables_map vm;
     po::store( po::command_line_parser( argc, argv ).options( options ).positional( positional ).run( ), vm );
     po::notify( vm );
+
+    g_fakeTexturesExtension = vm[ "fake-textures-extension" ].as< std::string >( );
 
     if ( vm.count( "input" ) && vm.count( "output" ) ) {
 

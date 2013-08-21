@@ -33,6 +33,7 @@ void parsePack( MemoryRange range, Path outputPath )
     std::string extension;
 
     switch ( dataType ) {
+        case 0x02 : extension = ".ff9md"; break ;
         case 0x04 : extension = ".tim";   break ;
         case 0x0C : extension = ".ff9bs"; break ;
         case 0x1B : extension = ".ff9db"; break ;
